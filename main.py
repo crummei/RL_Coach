@@ -106,8 +106,9 @@ async def getPrompt(ctx):
 async def on_ready():
     logging.info(f'Bot: {bot.user} is ready\n-------------\n')
 
+bot.remove_command("help")
 @bot.command(name="help")
-async def custom_help(ctx, *args):
+async def help(ctx):
     await getPrompt(ctx)
 
 @bot.command()
