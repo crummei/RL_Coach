@@ -58,33 +58,16 @@ t = threading.Thread(target=run)
 t.start()
 
 # Main bot code
-@bot.event
-async def on_ready():
-    logging.info(f'Bot: {bot.user} is ready\n-------------\n')
-
-@bot.command
-async def prompt(ctx, prompt, history):
+async def AIprompt(prompt, history):
     chatClient = Groq(
             api_key=os.getenv('GROQ_API_KEY'),
         )
     chatCompletion = chatClient.chat.completions.create(
         messages=[
-            {
-                'role': 'system',
-                'content': personality,
-            },
-            {
-                'role': 'system',
-                'content': behaviour,
-            },
-            {
-                'role': 'assistant',
-                'content': history,
-            },
-            {
-                'role': 'user',
-                'content': prompt,
-            }
+            {'role': 'system', 'content': personality},
+            {'role': 'system','content': behaviour},
+            {'role': 'assistant','content': history},
+            {'role': 'user','content': prompt}
         ],
         # Role "System" inputs your instructions.
         # Role "Assistant" inputs messages as the assistant. Effective for things like history, thats it's not supposed to include in the prompt, but still recognise.
@@ -94,7 +77,11 @@ async def prompt(ctx, prompt, history):
     )
     return chatCompletion
 
-bot.command
+@bot.event
+async def on_ready():
+    logging.info(f'Bot: {bot.user} is ready\n-------------\n')
+
+@bot.command()
 async def getPrompt(ctx):
     prompt = ctx.message.content.removeprefix(f"coach? ") if ctx.message.content else ''
         
@@ -114,23 +101,29 @@ async def getPrompt(ctx):
     else:
         history = ''
 
-    chatCompletion = await prompt(ctx, prompt, history)
-
+    chatCompletion = await AIprompt(prompt, history)
     response = chatCompletion.choices[0].message.content
-    await ctx.message.channel.reply(response)
+    await ctx.reply(response)
     serverResponses.append(response)
     logging.info(serverPrompts)
     logging.info(serverResponses)
 
-bot.command
+bot.command()
 async def test(ctx):
     await ctx.send("Testing complete!")
 
 @bot.event
 async def on_message(message):
-    if message.content.startswith(bot.command_prefix):
-        if message.content.startswith(f"{bot.command_prefix}test"):
-            await test(message)
+    if message.author.bot:
+        return
+    
+    ctx = await bot.get_context(message)
+
+    if ctx.command is None and message.content.startswith(bot.command_prefix):
+        ctx.command = bot.get_command("getPrompt")
+        await bot.invoke(ctx)
+
+        
     else:
         await bot.process_commands(message)
 
