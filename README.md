@@ -1,1 +1,1 @@
-# DiscordGPT
+# RL Coaching Bot for Discord
