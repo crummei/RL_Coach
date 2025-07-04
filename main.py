@@ -118,11 +118,10 @@ async def on_message(message):
     
     ctx = await bot.get_context(message)
 
-    if ctx.command is None and message.content.startswith(bot.command_prefix):
+    if ctx.command == test() and message.content.startswith(bot.command_prefix):
+        await test(ctx)
+    else:
         ctx.command = bot.get_command("getPrompt")
         await bot.invoke(ctx)
-
-    else:
-        await test(ctx)
 
 bot.run(os.environ.get('TOKEN'))
