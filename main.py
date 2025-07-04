@@ -108,10 +108,7 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        await getPrompt(ctx)
-    else:
-        raise error
+    await getPrompt(ctx)
 
 @bot.command()
 async def test(ctx):
