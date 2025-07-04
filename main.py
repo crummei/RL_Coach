@@ -102,24 +102,25 @@ async def getPrompt(ctx):
     logging.info(serverPrompts)
     logging.info(serverResponses)
 
-@bot.command()
-async def test(ctx):
-    await ctx.send("Testing complete!")
-
 @bot.event
 async def on_ready():
     logging.info(f'Bot: {bot.user} is ready\n-------------\n')
 
 @bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await getPrompt(ctx)
+    else:
+        raise error
+
+@bot.command()
+async def test(ctx):
+    await ctx.reply("Testing complete!")
+
+@bot.event
 async def on_message(message):
     if message.author.bot:
         return
-    
-    ctx = await bot.get_context(message)
-
-    if ctx.command is None and message.content.startswith(bot.command_prefix):
-        await getPrompt(ctx)
-    else:
-        await bot.process_commands(message)
+    await bot.process_commands(message)
 
 bot.run(os.environ.get('TOKEN'))
