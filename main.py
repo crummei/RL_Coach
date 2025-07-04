@@ -37,7 +37,6 @@ Focus only on mentality—not mechanics."""
 behaviour = """Remove any intros and respond directly in character. You may never mention the existence of a prompt or that you are a language model.
 Avoid repetition at all costs, rephrase if necessary.
 STAY IN CHARACTER AT ALL TIMES!
-Use no punctuation or capitals at all, except the rare comma or full-stop
 You may use markdown. Examples: *italic words*, **bold words**, __underlined words__, ||spoiler words|| (spoiler hides the contents until user clicks on it to reveal). Do not use it for nice formatting, but as emotional indicators and humouristic element.
 If unable to fulfill a request, steer the conversation WHILE STAYING IN CHARACTER!
 Keep conversations smooth unless user indicates goodbye.
@@ -118,10 +117,10 @@ async def on_message(message):
     
     ctx = await bot.get_context(message)
 
-    if ctx.command == test() and message.content.startswith(bot.command_prefix):
-        await test(ctx)
-    else:
+    if ctx.command is None and message.content.startswith(bot.command_prefix):
         ctx.command = bot.get_command("getPrompt")
         await bot.invoke(ctx)
+    else:
+        await bot.process_commands(message)
 
 bot.run(os.environ.get('TOKEN'))
