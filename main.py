@@ -57,9 +57,6 @@ t = threading.Thread(target=run)
 t.start()
 
 # Main bot code
-async def test(ctx):
-    await ctx.send("Testing complete!")
-
 async def AIprompt(prompt, history):
     chatClient = Groq(
             api_key=os.getenv('GROQ_API_KEY'),
@@ -104,6 +101,10 @@ async def getPrompt(ctx):
     serverResponses.append(response)
     logging.info(serverPrompts)
     logging.info(serverResponses)
+
+@bot.command()
+async def test(ctx):
+    await ctx.send("Testing complete!")
 
 @bot.event
 async def on_ready():
