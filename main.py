@@ -58,11 +58,11 @@ t = threading.Thread(target=run)
 t.start()
 
 # Main bot code
-@bot.event()
+@bot.event
 async def on_ready():
     logging.info(f'Bot: {bot.user} is ready\n-------------\n')
 
-@bot.command()
+@bot.command
 async def prompt(ctx, prompt, history):
     chatClient = Groq(
             api_key=os.getenv('GROQ_API_KEY'),
@@ -94,7 +94,7 @@ async def prompt(ctx, prompt, history):
     )
     return chatCompletion
 
-bot.command()
+bot.command
 async def getPrompt(ctx):
     prompt = ctx.message.content.removeprefix(f"coach? ") if ctx.message.content else ''
         
@@ -122,7 +122,7 @@ async def getPrompt(ctx):
     logging.info(serverPrompts)
     logging.info(serverResponses)
 
-bot.command()
+bot.command
 async def test(ctx):
     await ctx.send("Testing complete!")
 
