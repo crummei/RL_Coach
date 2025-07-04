@@ -79,11 +79,6 @@ async def AIprompt(prompt, history):
     )
     return chatCompletion
 
-@bot.event
-async def on_ready():
-    logging.info(f'Bot: {bot.user} is ready\n-------------\n')
-
-@bot.command()
 async def getPrompt(ctx):
     prompt = ctx.message.content.removeprefix(f"coach? ") if ctx.message.content else ''
         
@@ -111,6 +106,10 @@ async def getPrompt(ctx):
     logging.info(serverResponses)
 
 @bot.event
+async def on_ready():
+    logging.info(f'Bot: {bot.user} is ready\n-------------\n')
+
+@bot.event
 async def on_message(message):
     if message.author.bot:
         return
@@ -118,8 +117,7 @@ async def on_message(message):
     ctx = await bot.get_context(message)
 
     if ctx.command is None and message.content.startswith(bot.command_prefix):
-        ctx.command = bot.get_command("getPrompt")
-        await bot.invoke(ctx)
+        await getPrompt(ctx)
     else:
         await bot.process_commands(message)
 
