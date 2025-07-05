@@ -99,6 +99,10 @@ async def getPrompt(message):
     response = chatCompletion.choices[0].message.content
     await message.reply(response)
     serverResponses.append(response)
+    if len(serverPrompts) > 8:
+        serverPrompts.pop(0)        # Remove the oldest prompt
+    if len(serverResponses > 8):
+        serverResponses.pop(0)      # Remove the oldest response
     logging.info(serverPrompts)
     logging.info(serverResponses)
 
