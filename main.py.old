@@ -24,7 +24,7 @@ import logging
 
 # Setup
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=None, intents=intents)
+bot = commands.Bot(command_prefix='coach? ', intents=intents)
 serverData = {}
 
 # Prompts
@@ -47,7 +47,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "What do you want then? Fuck off mate."
+    return "I'm alive!"
 
 def run():
     port = int(os.environ.get("PORT", 8080))
@@ -77,7 +77,7 @@ async def AIprompt(prompt, history):
     return chatCompletion
 
 async def getPrompt(ctx):
-    prompt = ctx.message.content.removeprefix(f"<@{bot.user.id}> ") if ctx.message.content else ''
+    prompt = ctx.message.content.removeprefix(f"coach? ") if ctx.message.content else ''
         
     if ctx.message.guild.id not in serverData:
         serverData[ctx.message.guild.id] = {
@@ -111,18 +111,14 @@ bot.remove_command("help")
 async def help(ctx):
     await getPrompt(ctx)
 
+@bot.command()
+async def test(ctx):
+    await ctx.reply("Testing complete!")
+
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
-    
-    if message.content.startswith(f"<@{bot.user.id}>"):
-    
-        if message.content.removeprefix(f"<@{bot.user.id}> ").lower() == "test":
-            await message.reply("Testing complete!")
-
-        else:
-            ctx = await bot.get_context(message)
-            await getPrompt(ctx)
+    await bot.process_commands(message)
 
 bot.run(os.environ.get('TOKEN'))
