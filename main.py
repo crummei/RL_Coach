@@ -102,7 +102,7 @@ async def getPrompt(message):
     serverResponses.append(response)
     if len(serverPrompts) > 8:
         serverPrompts.pop(0)        # Remove the oldest prompt
-    if len(serverResponses > 8):
+    if len(serverResponses) > 8:
         serverResponses.pop(0)      # Remove the oldest response
     logging.info(serverPrompts)
     logging.info(serverResponses)
