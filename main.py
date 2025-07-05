@@ -89,17 +89,18 @@ async def getPrompt(message):
     serverPrompts = serverData[message.guild.id]['allPrompts']
     serverResponses = serverData[message.guild.id]['allResponses']
 
-    serverPrompts.append(prompt)  # Append the server prompt
-
     if len(serverPrompts) > 0:
-        history = f'''Prompts: {serverPrompts}\nResponses:\n{serverResponses}'''
+        history = f'''Prompts:\n{serverPrompts}\n\nResponses:\n{serverResponses}'''
     else:
         history = ''
 
     chatCompletion = await AIprompt(prompt, history)
     response = chatCompletion.choices[0].message.content
     await message.reply(response)
+    
+    serverPrompts.append(prompt)
     serverResponses.append(response)
+
     if len(serverPrompts) > 8:
         serverPrompts.pop(0)        # Remove the oldest prompt
     if len(serverResponses) > 8:
