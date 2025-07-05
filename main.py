@@ -6,6 +6,10 @@ import discord # pip install discord.py
 from discord.ext import commands
 from groq import Groq # pip install groq
 import logging
+logging.basicConfig(
+    level=logging.INFO,  # This allows .info() and above
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 
 # Models:
 # llama3-70b-8192
@@ -97,7 +101,7 @@ async def getPrompt(message):
     chatCompletion = await AIprompt(prompt, history)
     response = chatCompletion.choices[0].message.content
     await message.reply(response)
-    
+
     serverPrompts.append(prompt)
     serverResponses.append(response)
 
