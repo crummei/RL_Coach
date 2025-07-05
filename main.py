@@ -76,17 +76,17 @@ async def AIprompt(prompt, history):
     )
     return chatCompletion
 
-async def getPrompt(ctx):
-    prompt = ctx.message.content.removeprefix(f"<@{bot.user.id}> ") if ctx.message.content else ''
+async def getPrompt(message):
+    prompt = message.content.removeprefix(f"<@{bot.user.id}> ") if message.content else ''
         
-    if ctx.message.guild.id not in serverData:
-        serverData[ctx.message.guild.id] = {
+    if message.guild.id not in serverData:
+        serverData[message.guild.id] = {
             'allPrompts': [],
             'allResponses': []
         }
 
-    serverPrompts = serverData[ctx.message.guild.id]['allPrompts']
-    serverResponses = serverData[ctx.message.guild.id]['allResponses']
+    serverPrompts = serverData[message.guild.id]['allPrompts']
+    serverResponses = serverData[message.guild.id]['allResponses']
 
     serverPrompts.append(prompt)  # Append the server prompt
 
@@ -97,7 +97,7 @@ async def getPrompt(ctx):
 
     chatCompletion = await AIprompt(prompt, history)
     response = chatCompletion.choices[0].message.content
-    await ctx.reply(response)
+    await message.reply(response)
     serverResponses.append(response)
     logging.info(serverPrompts)
     logging.info(serverResponses)
@@ -122,7 +122,6 @@ async def on_message(message):
             await message.reply("Testing complete!")
 
         else:
-            ctx = await bot.get_context(message)
-            await getPrompt(ctx)
+            await getPrompt(message)
 
 bot.run(os.environ.get('TOKEN'))
