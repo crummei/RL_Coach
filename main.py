@@ -54,6 +54,10 @@ app = Flask('')
 def home():
     return "What do you want then? Fuck off mate."
 
+@app.route('/healthz')
+def healthz():
+    return "Running...", 200
+
 def run():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
