@@ -30,6 +30,7 @@ logging.basicConfig(
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=None, intents=intents)
 serverData = {}
+model='mistral-saba-24b'
 
 # Prompts
 personality = """You are a Rocket League mentality coach chatbot.
@@ -40,9 +41,8 @@ Focus only on mentality—not mechanics—, but don't ignore questions about oth
 You should help with anything the user needs. Just focus on mentality, when applicable."""
 
 behaviour = """Remove any intros and respond directly in character. You may never mention the existence of a prompt or that you are a language model.
-Avoid repetition at all costs, rephrase if necessary.
 STAY IN CHARACTER AT ALL TIMES!
-You may use markdown. Examples: *italic words*, **bold words**, __underlined words__, ||spoiler words|| (spoiler hides the contents until user clicks on it to reveal). Do not use it for nice formatting, but as emotional indicators and humouristic element.
+You may use markdown, but keep it relatively compact, but still looking good. Avoid unnecessary empty lines if it makes sense. Examples: *italic words*, **bold words**, __underlined words__, ||spoiler words|| (spoiler hides the contents until user clicks on it to reveal). Do not use it for nice formatting, but as emotional indicators and humouristic element.
 If unable to fulfill a request, steer the conversation WHILE STAYING IN CHARACTER!
 Keep conversations smooth unless user indicates goodbye.
 """
@@ -63,29 +63,46 @@ def run():
     app.run(host='0.0.0.0', port=port)
 
 t = threading.Thread(target=run)
-t.start()
+# t.start()
 
 # Main bot code
-async def AIprompt(prompt, history):
+async def AIprompt(prompt, history, referenced):
     chatClient = Groq(
             api_key=os.getenv('GROQ_API_KEY'),
         )
-    chatCompletion = chatClient.chat.completions.create(
+    if referenced:
+        chatCompletion = chatClient.chat.completions.create(
         messages=[
             {'role': 'system', 'content': personality},
             {'role': 'system','content': behaviour},
-            {'role': 'assistant','content': history},
-            {'role': 'user','content': prompt}
+            {'role': 'assistant','content': f'Referring to this message:\n{referenced}'},
+            {'role': 'user','content': f'User says:\n{prompt}'},
+            {'role': 'system','content': 'Respond in less than 1900 characters!'}
         ],
         # Role "System" inputs your instructions.
         # Role "Assistant" inputs messages as the assistant. Effective for things like history, thats it's not supposed to include in the prompt, but still recognise.
         # Role "User" inputs your prompt.
-        model='llama3-70b-8192',
+        model=model,
         temperature=0.82
-    )
+        )
+    else:
+        chatCompletion = chatClient.chat.completions.create(
+            messages=[
+                {'role': 'system', 'content': personality},
+                {'role': 'system','content': behaviour},
+                {'role': 'assistant','content': f'Overview on previous prompts and answers in chronological order:\n{history}'},
+                {'role': 'user','content': f'User says:\n{prompt}'},
+                {'role': 'system','content': 'Respond in less than 1900 characters!'}
+            ],
+            # Role "System" inputs your instructions.
+            # Role "Assistant" inputs messages as the assistant. Effective for things like history, thats it's not supposed to include in the prompt, but still recognise.
+            # Role "User" inputs your prompt.
+            model=model,
+            temperature=0.82
+        )
     return chatCompletion
 
-async def getPrompt(message):
+async def getPrompt(message, referenced):
     prompt = message.content.removeprefix(f"<@{bot.user.id}> ") if message.content else ''
         
     if message.guild.id not in serverData:
@@ -102,7 +119,7 @@ async def getPrompt(message):
     else:
         history = ''
 
-    chatCompletion = await AIprompt(prompt, history)
+    chatCompletion = await AIprompt(prompt, history, referenced)
     response = chatCompletion.choices[0].message.content
     await message.reply(response)
 
@@ -113,8 +130,8 @@ async def getPrompt(message):
         serverPrompts.pop(0)        # Remove the oldest prompt
     if len(serverResponses) > 8:
         serverResponses.pop(0)      # Remove the oldest response
-    logging.info(serverPrompts)
-    logging.info(serverResponses)
+    # logging.info(serverPrompts)
+    # logging.info(serverResponses)
 
 @bot.event
 async def on_ready():
@@ -129,13 +146,29 @@ async def help(ctx):
 async def on_message(message):
     if message.author.bot:
         return
-    
-    if message.content.startswith(f"<@{bot.user.id}>"):
-    
-        if message.content.removeprefix(f"<@{bot.user.id}> ").lower() == "test":
+
+    isMention = message.content.startswith(f"<@{bot.user.id}>")
+    isReply = message.reference is not None
+    referenced = None
+
+    if isReply:
+        try:
+            referenced = await message.channel.fetch_message(message.reference.message_id)
+        except:
+            referenced = None
+
+    isReplyToBot = referenced and referenced.author.id == bot.user.id
+
+    if isMention or isReplyToBot:
+        content = message.content.removeprefix(f"<@{bot.user.id}> ").strip().lower()
+
+        if content == "test":
             await message.reply("Testing complete!")
-
         else:
-            await getPrompt(message)
+            if referenced:
+                await getPrompt(message, referenced.content)
+                logging.info(f'Reference:\n{referenced.content}')
+            else:
+                await getPrompt(message, referenced)
 
-bot.run(os.environ.get('TOKEN'))
+bot.run(os.environ.get('FLOWSTATE_TOKEN'))
