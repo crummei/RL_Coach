@@ -52,7 +52,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "What do you want then? Fuck off mate."
+    return "Running..."
 
 @app.route('/healthz')
 def healthz():
