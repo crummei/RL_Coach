@@ -1,8 +1,8 @@
 import os
 import threading
 from flask import Flask
-from pathlib import Path
 import discord # pip install discord.py
+from discord import app_commands
 from discord.ext import commands
 from groq import Groq # pip install groq
 import logging
@@ -63,112 +63,102 @@ def run():
     app.run(host='0.0.0.0', port=port)
 
 t = threading.Thread(target=run)
-# t.start()
+t.start()
 
 # Main bot code
-async def AIprompt(prompt, history, referenced):
+async def AIprompt(prompt: str, referenced=None):
     chatClient = Groq(
-            api_key=os.getenv('GROQ_API_KEY'),
-        )
+        api_key=os.getenv('GROQ_API_KEY'),
+    )
+   
     if referenced:
         chatCompletion = chatClient.chat.completions.create(
-        messages=[
-            {'role': 'system', 'content': personality},
-            {'role': 'system','content': behaviour},
-            {'role': 'assistant','content': f'Referring to this message:\n{referenced}'},
-            {'role': 'user','content': f'User says:\n{prompt}'},
-            {'role': 'system','content': 'Respond in less than 1900 characters!'}
-        ],
-        # Role "System" inputs your instructions.
-        # Role "Assistant" inputs messages as the assistant. Effective for things like history, thats it's not supposed to include in the prompt, but still recognise.
-        # Role "User" inputs your prompt.
-        model=model,
-        temperature=0.82
+            messages=[
+                {'role': 'system', 'content': personality},
+                {'role': 'system','content': behaviour},
+                {'role': 'assistant','content': f'Referring to this message:\n{referenced}'},
+                {'role': 'user','content': f'User says:\n{prompt}'},
+                {'role': 'system','content': 'Respond in less than 1000 characters!'}
+            ],
+            # Role "System" inputs your instructions.
+            # Role "Assistant" inputs messages as the assistant. Effective for things like history, that it's not supposed to include in the prompt, but still recognise.
+            # Role "User" inputs your prompt.
+            
+            model=model,
+            temperature=0.82
         )
     else:
         chatCompletion = chatClient.chat.completions.create(
             messages=[
                 {'role': 'system', 'content': personality},
                 {'role': 'system','content': behaviour},
-                {'role': 'assistant','content': f'Overview on previous prompts and answers in chronological order:\n{history}'},
                 {'role': 'user','content': f'User says:\n{prompt}'},
-                {'role': 'system','content': 'Respond in less than 1900 characters!'}
+                {'role': 'system','content': 'Respond in less than 1000 characters!'}
             ],
             # Role "System" inputs your instructions.
             # Role "Assistant" inputs messages as the assistant. Effective for things like history, thats it's not supposed to include in the prompt, but still recognise.
             # Role "User" inputs your prompt.
+            
             model=model,
             temperature=0.82
         )
     return chatCompletion
 
-async def getPrompt(message, referenced):
-    prompt = message.content.removeprefix(f"<@{bot.user.id}> ") if message.content else ''
-        
-    if message.guild.id not in serverData:
-        serverData[message.guild.id] = {
-            'allPrompts': [],
-            'allResponses': []
-        }
-
-    serverPrompts = serverData[message.guild.id]['allPrompts']
-    serverResponses = serverData[message.guild.id]['allResponses']
-
-    if len(serverPrompts) > 0:
-        history = f'''Prompts:\n{serverPrompts}\n\nResponses:\n{serverResponses}'''
-    else:
-        history = ''
-
-    chatCompletion = await AIprompt(prompt, history, referenced)
+async def getPrompt(prompt: str, replyFunc, referenced=None):
+    chatCompletion = await AIprompt(
+        prompt=prompt,
+        referenced=referenced
+    )
     response = chatCompletion.choices[0].message.content
-    await message.reply(response)
+    await replyFunc(response)
 
-    serverPrompts.append(prompt)
-    serverResponses.append(response)
+@bot.tree.command(name='ask', description='Ask Harmonic a question.')
+@app_commands.describe(question="E.g. How do I work on my rotations?")
+async def ask(interaction: discord.interactions, question: str):
+    await interaction.response.defer()
 
-    if len(serverPrompts) > 8:
-        serverPrompts.pop(0)        # Remove the oldest prompt
-    if len(serverResponses) > 8:
-        serverResponses.pop(0)      # Remove the oldest response
-    # logging.info(serverPrompts)
-    # logging.info(serverResponses)
+    await getPrompt(
+        prompt=question,
+        replyFunc=interaction.followup.send,
+        referenced=None
+    )
 
 @bot.event
 async def on_ready():
     logging.info(f'Bot: {bot.user} is ready\n-------------\n')
-
-bot.remove_command("help")
-@bot.command(name="help")
-async def help(ctx):
-    await getPrompt(ctx)
+    
+    try:
+        synced = await bot.tree.sync()
+        logging.info(f"Synced {len(synced)} commands")
+    except Exception as e:
+        logging.warning(f"Error syncing commands: {e}")
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
+    
+    if message.guild.id == None or message.channel.id == 1395190006963765348:
+        isMention = message.content.startswith(f"<@{bot.user.id}>")
+        isReply = message.reference is not None
+        referenced = None
 
-    isMention = message.content.startswith(f"<@{bot.user.id}>")
-    isReply = message.reference is not None
-    referenced = None
+        if isReply:
+            try:
+                referenced = await message.channel.fetch_message(message.reference.message_id)
+            except:
+                referenced = None
 
-    if isReply:
-        try:
-            referenced = await message.channel.fetch_message(message.reference.message_id)
-        except:
-            referenced = None
+        isReplyToBot = referenced and referenced.author.id == bot.user.id
 
-    isReplyToBot = referenced and referenced.author.id == bot.user.id
+        if isMention or isReplyToBot:
+            await getPrompt(
+                prompt=message.content.removeprefix(f"<@{bot.user.id}> ").strip(),
+                replyFunc=message.reply,
+                referenced=referenced.content if referenced else referenced
+            )
 
-    if isMention or isReplyToBot:
-        content = message.content.removeprefix(f"<@{bot.user.id}> ").strip().lower()
-
-        if content == "test":
-            await message.reply("Testing complete!")
-        else:
             if referenced:
-                await getPrompt(message, referenced.content)
                 logging.info(f'Reference:\n{referenced.content}')
-            else:
-                await getPrompt(message, referenced)
 
 bot.run(os.environ.get('HARMONIC_TOKEN'))

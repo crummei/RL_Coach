@@ -1,7 +1,4 @@
 import os
-import threading
-from flask import Flask
-from pathlib import Path
 import discord # pip install discord.py
 from discord import app_commands
 from discord.ext import commands
@@ -76,7 +73,7 @@ async def AIprompt(prompt: str, referenced=None):
                 {'role': 'system', 'content': personality},
                 {'role': 'system','content': behaviour},
                 {'role': 'user','content': f'User says:\n{prompt}'},
-                {'role': 'system','content': 'Respond in less than 1900 characters!'}
+                {'role': 'system','content': 'Respond in less than 800 characters!'}
             ],
             # Role "System" inputs your instructions.
             # Role "Assistant" inputs messages as the assistant. Effective for things like history, thats it's not supposed to include in the prompt, but still recognise.
@@ -120,27 +117,28 @@ async def on_ready():
 async def on_message(message):
     if message.author.bot:
         return
+    
+    if message.guild.id == None or message.channel.id == 1395190006963765348:
+        isMention = message.content.startswith(f"<@{bot.user.id}>")
+        isReply = message.reference is not None
+        referenced = None
 
-    isMention = message.content.startswith(f"<@{bot.user.id}>")
-    isReply = message.reference is not None
-    referenced = None
+        if isReply:
+            try:
+                referenced = await message.channel.fetch_message(message.reference.message_id)
+            except:
+                referenced = None
 
-    if isReply:
-        try:
-            referenced = await message.channel.fetch_message(message.reference.message_id)
-        except:
-            referenced = None
+        isReplyToBot = referenced and referenced.author.id == bot.user.id
 
-    isReplyToBot = referenced and referenced.author.id == bot.user.id
+        if isMention or isReplyToBot:
+            await getPrompt(
+                prompt=message.content.removeprefix(f"<@{bot.user.id}> ").strip(),
+                replyFunc=message.reply,
+                referenced=referenced.content if referenced else referenced
+            )
 
-    if isMention or isReplyToBot:
-        await getPrompt(
-            prompt=message.content.removeprefix(f"<@{bot.user.id}> ").strip(),
-            replyFunc=message.reply,
-            referenced=referenced.content if referenced else referenced
-        )
-
-        if referenced:
-            logging.info(f'Reference:\n{referenced.content}')
+            if referenced:
+                logging.info(f'Reference:\n{referenced.content}')
 
 bot.run(os.environ.get('FLOWSTATE_TOKEN'))
